@@ -1,7 +1,6 @@
-# 📊 Instagram Analytics Dashboard
+# 📊 Instagram-analytics-dashboard
 
 A complete Python data analysis project for Instagram Business/Creator accounts using the **Instagram Graph API**.
-
 Produces interactive charts, processed CSV exports, and a self-contained HTML report — all from a single command.
 
 ## ✨ Features
@@ -64,7 +63,7 @@ instagram-analytics/
 ### Step 1 — Clone & install
 
 ```bash
-git clone https://github.com/your-username/instagram-analytics.git
+git clone https://github.com/techindro/instagram-analytics.git
 cd instagram-analytics
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
@@ -76,7 +75,6 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 ```
-
 Edit `.env` and fill in your values:
 
 ```env
