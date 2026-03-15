@@ -1,13 +1,8 @@
-# instagram-analytics-dashboard
-Interactive Instagram analytics dashboard with engagement trends, audience insights, and content performance
-
 # 📊 Instagram Analytics Dashboard
 
 A complete Python data analysis project for Instagram Business/Creator accounts using the **Instagram Graph API**.
 
 Produces interactive charts, processed CSV exports, and a self-contained HTML report — all from a single command.
-
----
 
 ## ✨ Features
 
