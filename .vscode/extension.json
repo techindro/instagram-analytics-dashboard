@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "ms-toolsai.jupyter",
+    "ms-toolsai.vscode-jupyter-slideshow",
+    "njpwerner.autodocstring",
+    "usernamehw.errorlens",
+    "mechatroner.rainbow-csv",
+    "christian-kohler.path-intellisense"
+  ]
+}
