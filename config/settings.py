@@ -1,4 +1,3 @@
-"""
 config/settings.py
 ──────────────────
 Central configuration loaded from .env
