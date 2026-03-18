@@ -4,7 +4,6 @@ generate_notebook.py
 Run this once to create the Instagram_Analytics.ipynb notebook file.
     python generate_notebook.py
 """
-
 import json
 from pathlib import Path
 
