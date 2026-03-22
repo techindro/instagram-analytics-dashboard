@@ -1,0 +1,220 @@
+"""
+tests/test_data_processor.py
+─────────────────────────────
+Unit tests for DataProcessor using mock data (no API calls needed).
+Run: pytest tests/ -v
+"""
+
+import pytest
+import pandas as pd
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from src.analysis.data_processor import DataProcessor
+
+
+# ── Fixtures ─────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def sample_posts():
+    return [
+        {
+            "id": "1",
+            "caption": "#photography golden hour #sunset",
+            "media_type": "IMAGE",
+            "timestamp": "2024-03-10T18:00:00+0000",
+            "like_count": 500,
+            "comments_count": 30,
+            "reach": 8000,
+            "impressions": 12000,
+            "saved": 120,
+            "shares": 45,
+        },
+        {
+            "id": "2",
+            "caption": "#reel #creator behind the scenes",
+            "media_type": "REEL",
+            "timestamp": "2024-03-08T12:00:00+0000",
+            "like_count": 1200,
+            "comments_count": 80,
+            "reach": 18000,
+            "impressions": 28000,
+            "saved": 340,
+            "shares": 210,
+        },
+        {
+            "id": "3",
+            "caption": "",
+            "media_type": "CAROUSEL_ALBUM",
+            "timestamp": "2024-03-05T09:00:00+0000",
+            "like_count": 800,
+            "comments_count": 50,
+            "reach": 11000,
+            "impressions": 17000,
+            "saved": 200,
+            "shares": 90,
+        },
+    ]
+
+
+@pytest.fixture
+def sample_follower_growth():
+    from datetime import date, timedelta
+    base = 100_000
+    rows = []
+    for i in range(30):
+        rows.append({
+            "end_time": str(date(2024, 2, 15) + timedelta(days=i)),
+            "value": base + i * 200 + (i % 5) * 50,
+        })
+    return rows
+
+
+@pytest.fixture
+def sample_audience():
+    return {
+        "audience_gender_age": {
+            "F.18-24": 5000, "F.25-34": 4000, "M.18-24": 3000,
+            "M.25-34": 2500, "U.35-44": 500,
+        },
+        "audience_city": {
+            "Mumbai": 8000, "Delhi": 6000, "Bangalore": 4500,
+            "Hyderabad": 3000, "Chennai": 2500,
+        },
+        "audience_country": {
+            "India": 45000, "United States": 8000,
+            "United Kingdom": 3000, "UAE": 2000,
+        },
+    }
+
+
+# ── Tests: process_posts ──────────────────────────────────────────────────────
+
+class TestProcessPosts:
+    def test_returns_dataframe(self, sample_posts):
+        df = DataProcessor.process_posts(sample_posts)
+        assert isinstance(df, pd.DataFrame)
+
+    def test_row_count(self, sample_posts):
+        df = DataProcessor.process_posts(sample_posts)
+        assert len(df) == len(sample_posts)
+
+    def test_engagement_rate_computed(self, sample_posts):
+        df = DataProcessor.process_posts(sample_posts)
+        assert "engagement_rate" in df.columns
+        assert (df["engagement_rate"] >= 0).all()
+
+    def test_engagement_rate_formula(self, sample_posts):
+        df = DataProcessor.process_posts(sample_posts)
+        row = df[df["id"] == "1"].iloc[0]
+        expected_eng = row["like_count"] + row["comments_count"] + row["saved"] + row["shares"]
+        expected_er  = round(expected_eng / row["reach"] * 100, 2)
+        assert abs(row["engagement_rate"] - expected_er) < 0.01
+
+    def test_datetime_columns(self, sample_posts):
+        df = DataProcessor.process_posts(sample_posts)
+        assert "hour" in df.columns
+        assert "weekday" in df.columns
+        assert df["hour"].between(0, 23).all()
+
+    def test_empty_input(self):
+        df = DataProcessor.process_posts([])
+        assert df.empty
+
+    def test_total_engagement(self, sample_posts):
+        df = DataProcessor.process_posts(sample_posts)
+        assert "total_engagement" in df.columns
+        assert (df["total_engagement"] >= 0).all()
+
+
+# ── Tests: process_follower_growth ───────────────────────────────────────────
+
+class TestFollowerGrowth:
+    def test_returns_dataframe(self, sample_follower_growth):
+        df = DataProcessor.process_follower_growth(sample_follower_growth)
+        assert isinstance(df, pd.DataFrame)
+
+    def test_columns_present(self, sample_follower_growth):
+        df = DataProcessor.process_follower_growth(sample_follower_growth)
+        for col in ["date", "followers", "daily_gain", "growth_rate", "rolling_7"]:
+            assert col in df.columns, f"Missing column: {col}"
+
+    def test_sorted_ascending(self, sample_follower_growth):
+        df = DataProcessor.process_follower_growth(sample_follower_growth)
+        assert (df["followers"].diff().dropna() >= 0).all()
+
+    def test_empty_input(self):
+        df = DataProcessor.process_follower_growth([])
+        assert df.empty
+
+
+# ── Tests: process_audience_demographics ─────────────────────────────────────
+
+class TestAudienceDemographics:
+    def test_returns_dict(self, sample_audience):
+        result = DataProcessor.process_audience_demographics(sample_audience)
+        assert isinstance(result, dict)
+
+    def test_gender_key(self, sample_audience):
+        result = DataProcessor.process_audience_demographics(sample_audience)
+        assert "gender" in result
+        assert set(result["gender"]["gender"]).issubset({"Female", "Male", "Other"})
+
+    def test_age_key(self, sample_audience):
+        result = DataProcessor.process_audience_demographics(sample_audience)
+        assert "age" in result
+
+    def test_city_key(self, sample_audience):
+        result = DataProcessor.process_audience_demographics(sample_audience)
+        assert "city" in result
+        assert result["city"].iloc[0]["city"] == "Mumbai"
+
+    def test_pct_sums_to_100(self, sample_audience):
+        result = DataProcessor.process_audience_demographics(sample_audience)
+        for key in ["gender", "city", "country"]:
+            if key in result:
+                total = result[key]["pct"].sum()
+                assert abs(total - 100.0) < 0.1, f"{key} pct sums to {total}"
+
+    def test_empty_input(self):
+        result = DataProcessor.process_audience_demographics({})
+        assert result == {}
+
+
+# ── Tests: process_hashtags ───────────────────────────────────────────────────
+
+class TestHashtags:
+    def test_returns_dataframe(self):
+        raw = [
+            {"hashtag": "#photography", "our_post_count": 10, "avg_engagement": 500, "ig_media_count": 1_000_000, "total_likes": 4000, "total_comments": 500},
+            {"hashtag": "#travel",       "our_post_count": 5,  "avg_engagement": 800, "ig_media_count": 5_000_000, "total_likes": 3500, "total_comments": 500},
+        ]
+        df = DataProcessor.process_hashtags(raw)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2
+
+    def test_sorted_by_engagement(self):
+        raw = [
+            {"hashtag": "#a", "our_post_count": 1, "avg_engagement": 100, "ig_media_count": 100, "total_likes": 80, "total_comments": 20},
+            {"hashtag": "#b", "our_post_count": 1, "avg_engagement": 500, "ig_media_count": 200, "total_likes": 400, "total_comments": 100},
+        ]
+        df = DataProcessor.process_hashtags(raw)
+        assert df.iloc[0]["hashtag"] == "#b"
+
+
+# ── Tests: compute_best_times ─────────────────────────────────────────────────
+
+class TestBestTimes:
+    def test_returns_dataframe(self, sample_posts):
+        posts_df = DataProcessor.process_posts(sample_posts)
+        df = DataProcessor.compute_best_times(posts_df)
+        assert isinstance(df, pd.DataFrame)
+
+    def test_columns(self, sample_posts):
+        posts_df = DataProcessor.process_posts(sample_posts)
+        df = DataProcessor.compute_best_times(posts_df)
+        if not df.empty:
+            assert "weekday" in df.columns
+            assert "hour" in df.columns
+            assert "avg_engagement_rate" in df.columns
