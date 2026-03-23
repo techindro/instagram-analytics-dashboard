@@ -4,7 +4,6 @@ tests/test_data_processor.py
 Unit tests for DataProcessor using mock data (no API calls needed).
 Run: pytest tests/ -v
 """
-
 import pytest
 import pandas as pd
 import sys
@@ -12,7 +11,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.analysis.data_processor import DataProcessor
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -87,8 +85,6 @@ def sample_audience():
             "United Kingdom": 3000, "UAE": 2000,
         },
     }
-
-
 # ── Tests: process_posts ──────────────────────────────────────────────────────
 
 class TestProcessPosts:
@@ -126,7 +122,6 @@ class TestProcessPosts:
         df = DataProcessor.process_posts(sample_posts)
         assert "total_engagement" in df.columns
         assert (df["total_engagement"] >= 0).all()
-
 
 # ── Tests: process_follower_growth ───────────────────────────────────────────
 
@@ -180,7 +175,6 @@ class TestAudienceDemographics:
     def test_empty_input(self):
         result = DataProcessor.process_audience_demographics({})
         assert result == {}
-
 
 # ── Tests: process_hashtags ───────────────────────────────────────────────────
 
